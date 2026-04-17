@@ -76,6 +76,9 @@ export default function ScrapePage() {
           idx === i ? { ...j, status: 'error', error: String(err) } : j
         ))
       }
+
+      // small delay to avoid rate limiting
+      await new Promise(r => setTimeout(r, 300))
     }
 
     setSummary({ totalFound, totalInserted })
@@ -140,7 +143,14 @@ export default function ScrapePage() {
                   job.status === 'running' ? 'bg-blue-50' : ''
                 }`}
               >
-                <span className="text-gray-800">{job.searchTerm}</span>
+                <span className="text-gray-800">
+                  {job.searchTerm}
+                  {job.error && (
+                    <span className="ml-2 text-xs text-red-400" title={job.error}>
+                      — {job.error.slice(0, 80)}
+                    </span>
+                  )}
+                </span>
                 <span className="w-20 text-center text-gray-500">{countyLabels[job.county]}</span>
                 <span className={`w-16 text-center font-medium ${statusColor[job.status]}`}>
                   {statusIcon[job.status]} {job.status}

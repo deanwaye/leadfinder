@@ -3,6 +3,9 @@ import { supabase } from '@/lib/supabase'
 import type { County, LeadStatus } from '@/lib/types'
 import LeadsClient from './LeadsClient'
 
+const SORTABLE = ['name', 'category', 'city', 'rating', 'status'] as const
+type SortCol = typeof SORTABLE[number]
+
 interface PageProps {
   searchParams: Promise<{
     county?: string
@@ -10,6 +13,8 @@ interface PageProps {
     search?: string
     enriched?: string
     page?: string
+    sort?: string
+    dir?: string
   }>
 }
 
@@ -21,11 +26,13 @@ export default async function LeadsPage({ searchParams }: PageProps) {
   const enriched = params.enriched || null
   const page = parseInt(params.page ?? '1', 10)
   const perPage = 50
+  const sort: SortCol = SORTABLE.includes(params.sort as SortCol) ? (params.sort as SortCol) : 'name'
+  const ascending = params.dir !== 'desc'
 
   let query = supabase
     .from('leads')
     .select('*', { count: 'exact' })
-    .order('name', { ascending: true })
+    .order(sort, { ascending, nullsFirst: false })
     .range((page - 1) * perPage, page * perPage - 1)
 
   if (county) query = query.eq('county', county)
@@ -45,6 +52,8 @@ export default async function LeadsPage({ searchParams }: PageProps) {
           total={count ?? 0}
           page={page}
           perPage={perPage}
+          sort={sort}
+          dir={ascending ? 'asc' : 'desc'}
         />
       </Suspense>
     </div>

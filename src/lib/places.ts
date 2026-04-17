@@ -34,7 +34,7 @@ interface PlaceResult {
 
 function extractAddressComponent(components: PlaceResult['addressComponents'], type: string): string | null {
   if (!components) return null
-  const match = components.find(c => c.types.includes(type))
+  const match = components.find(c => c.types?.includes(type))
   return match?.longText ?? null
 }
 

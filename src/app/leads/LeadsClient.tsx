@@ -10,9 +10,11 @@ interface Props {
   total: number
   page: number
   perPage: number
+  sort: string
+  dir: 'asc' | 'desc'
 }
 
-export default function LeadsClient({ leads, total, page, perPage }: Props) {
+export default function LeadsClient({ leads, total, page, perPage, sort, dir }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
@@ -27,6 +29,33 @@ export default function LeadsClient({ leads, total, page, perPage }: Props) {
     if (key !== 'page') params.delete('page')
     startTransition(() => router.push(`/leads?${params.toString()}`))
   }, [router, searchParams])
+
+  const sortBy = useCallback((col: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (params.get('sort') === col) {
+      params.set('dir', params.get('dir') === 'asc' ? 'desc' : 'asc')
+    } else {
+      params.set('sort', col)
+      params.set('dir', 'asc')
+    }
+    params.delete('page')
+    startTransition(() => router.push(`/leads?${params.toString()}`))
+  }, [router, searchParams])
+
+  const SortHeader = ({ col, label }: { col: string; label: string }) => {
+    const active = sort === col
+    return (
+      <th
+        onClick={() => sortBy(col)}
+        className="text-left px-4 py-2.5 font-medium text-gray-500 text-xs uppercase tracking-wide cursor-pointer select-none hover:text-gray-800 whitespace-nowrap"
+      >
+        {label}
+        <span className="ml-1 text-gray-300">
+          {active ? (dir === 'asc' ? '↑' : '↓') : '↕'}
+        </span>
+      </th>
+    )
+  }
 
   const currentCounty = searchParams.get('county') ?? ''
   const currentStatus = searchParams.get('status') ?? ''
@@ -82,14 +111,14 @@ export default function LeadsClient({ leads, total, page, perPage }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              <th className="text-left px-4 py-2.5 font-medium text-gray-500 text-xs uppercase tracking-wide">Company</th>
-              <th className="text-left px-4 py-2.5 font-medium text-gray-500 text-xs uppercase tracking-wide">City</th>
+              <SortHeader col="name" label="Company" />
+              <SortHeader col="city" label="City" />
               <th className="text-left px-4 py-2.5 font-medium text-gray-500 text-xs uppercase tracking-wide">County</th>
-              <th className="text-left px-4 py-2.5 font-medium text-gray-500 text-xs uppercase tracking-wide">Category</th>
+              <SortHeader col="category" label="Category" />
               <th className="text-left px-4 py-2.5 font-medium text-gray-500 text-xs uppercase tracking-wide">Phone</th>
               <th className="text-left px-4 py-2.5 font-medium text-gray-500 text-xs uppercase tracking-wide">Email</th>
-              <th className="text-left px-4 py-2.5 font-medium text-gray-500 text-xs uppercase tracking-wide">Rating</th>
-              <th className="text-left px-4 py-2.5 font-medium text-gray-500 text-xs uppercase tracking-wide">Status</th>
+              <SortHeader col="rating" label="Rating" />
+              <SortHeader col="status" label="Status" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">

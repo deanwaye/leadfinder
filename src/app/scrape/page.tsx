@@ -15,7 +15,7 @@ interface Job {
   error?: string
 }
 
-const PASSWORD = 'leadfinder2026'
+const PASSWORD = process.env.NEXT_PUBLIC_SCRAPE_PASSWORD ?? ''
 
 export default function ScrapePage() {
   const [jobs, setJobs] = useState<Job[]>([])

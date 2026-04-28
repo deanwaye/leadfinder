@@ -12,9 +12,10 @@ interface Props {
   perPage: number
   sort: string
   dir: 'asc' | 'desc'
+  cities: string[]
 }
 
-export default function LeadsClient({ leads, total, page, perPage, sort, dir }: Props) {
+export default function LeadsClient({ leads, total, page, perPage, sort, dir, cities }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
@@ -58,6 +59,7 @@ export default function LeadsClient({ leads, total, page, perPage, sort, dir }: 
   }
 
   const currentCounty = searchParams.get('county') ?? ''
+  const currentCity = searchParams.get('city') ?? ''
   const currentStatus = searchParams.get('status') ?? ''
   const currentSearch = searchParams.get('search') ?? ''
   const currentEnriched = searchParams.get('enriched') ?? ''
@@ -77,12 +79,30 @@ export default function LeadsClient({ leads, total, page, perPage, sort, dir }: 
         />
         <select
           value={currentCounty}
-          onChange={e => updateParam('county', e.target.value)}
+          onChange={e => {
+            const params = new URLSearchParams(searchParams.toString())
+            if (e.target.value) params.set('county', e.target.value)
+            else params.delete('county')
+            params.delete('city')
+            params.delete('page')
+            startTransition(() => router.push(`/leads?${params.toString()}`))
+          }}
           className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All counties</option>
           <option value="guilford">Guilford</option>
           <option value="forsyth">Forsyth</option>
+        </select>
+        <select
+          value={currentCity}
+          onChange={e => updateParam('city', e.target.value)}
+          disabled={cities.length === 0}
+          className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+        >
+          <option value="">All cities</option>
+          {cities.map(c => (
+            <option key={c} value={c}>{c}</option>
+          ))}
         </select>
         <select
           value={currentStatus}
@@ -116,6 +136,7 @@ export default function LeadsClient({ leads, total, page, perPage, sort, dir }: 
               <th className="text-left px-4 py-2.5 font-medium text-gray-500 text-xs uppercase tracking-wide">County</th>
               <SortHeader col="category" label="Category" />
               <th className="text-left px-4 py-2.5 font-medium text-gray-500 text-xs uppercase tracking-wide">Phone</th>
+              <th className="text-left px-4 py-2.5 font-medium text-gray-500 text-xs uppercase tracking-wide">Website</th>
               <th className="text-left px-4 py-2.5 font-medium text-gray-500 text-xs uppercase tracking-wide">Email</th>
               <SortHeader col="rating" label="Rating" />
               <SortHeader col="status" label="Status" />
@@ -124,7 +145,7 @@ export default function LeadsClient({ leads, total, page, perPage, sort, dir }: 
           <tbody className="divide-y divide-gray-50">
             {leads.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
+                <td colSpan={9} className="px-4 py-12 text-center text-gray-400">
                   No leads found. <a href="/scrape" className="text-blue-600 underline">Run the scraper</a> to populate your database.
                 </td>
               </tr>
@@ -140,6 +161,20 @@ export default function LeadsClient({ leads, total, page, perPage, sort, dir }: 
                 <td className="px-4 py-2.5 text-gray-500 capitalize">{lead.county ?? '—'}</td>
                 <td className="px-4 py-2.5 text-gray-500 max-w-[140px] truncate">{lead.category ?? '—'}</td>
                 <td className="px-4 py-2.5 text-gray-500">{lead.phone ?? '—'}</td>
+                <td className="px-4 py-2.5 max-w-[180px] truncate" onClick={e => e.stopPropagation()}>
+                  {lead.website ? (
+                    <a
+                      href={lead.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {lead.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
+                    </a>
+                  ) : (
+                    <span className="text-gray-500">—</span>
+                  )}
+                </td>
                 <td className="px-4 py-2.5 text-gray-500 max-w-[160px] truncate">{lead.email ?? '—'}</td>
                 <td className="px-4 py-2.5 text-gray-500">
                   {lead.rating ? `${lead.rating} (${lead.review_count})` : '—'}

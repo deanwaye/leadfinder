@@ -63,24 +63,32 @@ export interface ScrapedLead {
   lng: number | null
 }
 
+export type SearchTarget =
+  | { kind: 'county'; county: County }
+  | { kind: 'zip'; zipCode: string }
+
 export async function searchPlaces(
   searchTerm: string,
-  county: County
+  target: SearchTarget
 ): Promise<ScrapedLead[]> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY
   if (!apiKey) throw new Error('GOOGLE_PLACES_API_KEY is not set')
 
-  const { lat, lng, radius } = COUNTIES[county]
+  const body: Record<string, unknown> = {
+    maxResultCount: 20,
+  }
 
-  const body = {
-    textQuery: `${searchTerm} near ${county === 'guilford' ? 'Greensboro NC' : 'Winston-Salem NC'}`,
-    locationBias: {
+  if (target.kind === 'county') {
+    const { lat, lng, radius } = COUNTIES[target.county]
+    body.textQuery = `${searchTerm} near ${target.county === 'guilford' ? 'Greensboro NC' : 'Winston-Salem NC'}`
+    body.locationBias = {
       circle: {
         center: { latitude: lat, longitude: lng },
         radius,
       },
-    },
-    maxResultCount: 20,
+    }
+  } else {
+    body.textQuery = `${searchTerm} in ${target.zipCode}`
   }
 
   const res = await fetch(PLACES_API_URL, {
@@ -106,7 +114,7 @@ export async function searchPlaces(
     name: p.displayName?.text ?? 'Unknown',
     address: p.formattedAddress ?? null,
     city: extractAddressComponent(p.addressComponents, 'locality'),
-    county: detectCounty(p.addressComponents) ?? county,
+    county: detectCounty(p.addressComponents) ?? (target.kind === 'county' ? target.county : null),
     phone: p.nationalPhoneNumber ?? null,
     website: p.websiteUri ?? null,
     category: p.primaryType ?? null,

@@ -9,21 +9,28 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { searchTerm, county } = await req.json() as { searchTerm: string; county: County }
+  const { searchTerm, county, zipCode } = await req.json() as {
+    searchTerm: string
+    county?: County
+    zipCode?: string
+  }
 
-  if (!searchTerm || !county) {
-    return Response.json({ error: 'searchTerm and county are required' }, { status: 400 })
+  if (!searchTerm || (!county && !zipCode)) {
+    return Response.json({ error: 'searchTerm and either county or zipCode are required' }, { status: 400 })
   }
 
   try {
-    const results = await searchPlaces(searchTerm, county)
+    const target = zipCode
+      ? { kind: 'zip' as const, zipCode }
+      : { kind: 'county' as const, county: county! }
+    const results = await searchPlaces(searchTerm, target)
 
     if (results.length === 0) {
       return Response.json({ inserted: 0, skipped: 0 })
     }
 
     const { data, error } = await supabase
-      .from('leads')
+      .from('lf_leads')
       .upsert(results, { onConflict: 'place_id', ignoreDuplicates: true })
       .select('id')
 

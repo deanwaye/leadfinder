@@ -8,7 +8,8 @@ type JobStatus = 'pending' | 'running' | 'done' | 'error'
 
 interface Job {
   searchTerm: string
-  county: County
+  county?: County
+  zipCode?: string
   status: JobStatus
   found?: number
   inserted?: number
@@ -17,16 +18,42 @@ interface Job {
 
 const PASSWORD = process.env.NEXT_PUBLIC_SCRAPE_PASSWORD ?? ''
 
+function parseZipCodes(input: string): string[] {
+  return Array.from(
+    new Set(
+      input
+        .split(',')
+        .map(z => z.trim())
+        .filter(z => /^\d{5}$/.test(z))
+    )
+  )
+}
+
 export default function ScrapePage() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [running, setRunning] = useState(false)
   const [summary, setSummary] = useState<{ totalFound: number; totalInserted: number } | null>(null)
+  const [zipInput, setZipInput] = useState('')
+
+  const zipCodes = parseZipCodes(zipInput)
+  const useZips = zipCodes.length > 0
+  const jobCount = useZips
+    ? B2B_SEARCH_TERMS.length * zipCodes.length
+    : B2B_SEARCH_TERMS.length * Object.keys(COUNTIES).length
 
   function buildJobs(): Job[] {
     const all: Job[] = []
-    for (const county of Object.keys(COUNTIES) as County[]) {
-      for (const term of B2B_SEARCH_TERMS) {
-        all.push({ searchTerm: term, county, status: 'pending' })
+    if (useZips) {
+      for (const zipCode of zipCodes) {
+        for (const term of B2B_SEARCH_TERMS) {
+          all.push({ searchTerm: term, zipCode, status: 'pending' })
+        }
+      }
+    } else {
+      for (const county of Object.keys(COUNTIES) as County[]) {
+        for (const term of B2B_SEARCH_TERMS) {
+          all.push({ searchTerm: term, county, status: 'pending' })
+        }
       }
     }
     return all
@@ -55,7 +82,11 @@ export default function ScrapePage() {
             'Content-Type': 'application/json',
             'x-scrape-password': PASSWORD,
           },
-          body: JSON.stringify({ searchTerm: job.searchTerm, county: job.county }),
+          body: JSON.stringify(
+            job.zipCode
+              ? { searchTerm: job.searchTerm, zipCode: job.zipCode }
+              : { searchTerm: job.searchTerm, county: job.county }
+          ),
         })
 
         const data = await res.json()
@@ -105,7 +136,11 @@ export default function ScrapePage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Scrape B2B Leads</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {B2B_SEARCH_TERMS.length} search terms × 2 counties = {B2B_SEARCH_TERMS.length * 2} API calls
+            {B2B_SEARCH_TERMS.length} search terms ×{' '}
+            {useZips
+              ? `${zipCodes.length} zip code${zipCodes.length === 1 ? '' : 's'}`
+              : `${Object.keys(COUNTIES).length} counties`}{' '}
+            = {jobCount} API calls
           </p>
         </div>
         <button
@@ -115,6 +150,27 @@ export default function ScrapePage() {
         >
           {running ? 'Scraping…' : 'Start Scrape'}
         </button>
+      </div>
+
+      <div className="mb-6 p-4 bg-white border border-gray-200 rounded-lg">
+        <label htmlFor="zips" className="block text-sm font-semibold text-gray-700 mb-1">
+          Zip codes (optional)
+        </label>
+        <p className="text-xs text-gray-500 mb-2">
+          Comma-separated 5-digit zips (e.g. <code>27401, 27408, 27410</code>). Leave blank to scrape by county instead.
+        </p>
+        <input
+          id="zips"
+          type="text"
+          value={zipInput}
+          onChange={e => setZipInput(e.target.value)}
+          disabled={running}
+          placeholder="27401, 27408, 27410"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+        />
+        {zipInput.trim() !== '' && zipCodes.length === 0 && (
+          <p className="text-xs text-red-500 mt-1">No valid 5-digit zip codes detected.</p>
+        )}
       </div>
 
       {summary && (
@@ -130,7 +186,7 @@ export default function ScrapePage() {
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div className="grid grid-cols-[1fr_auto_auto_auto_auto] text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-2 border-b border-gray-100">
             <span>Search Term</span>
-            <span className="w-20 text-center">County</span>
+            <span className="w-20 text-center">Location</span>
             <span className="w-16 text-center">Status</span>
             <span className="w-16 text-center">Found</span>
             <span className="w-20 text-center">Inserted</span>
@@ -151,7 +207,9 @@ export default function ScrapePage() {
                     </span>
                   )}
                 </span>
-                <span className="w-20 text-center text-gray-500">{countyLabels[job.county]}</span>
+                <span className="w-20 text-center text-gray-500">
+                  {job.zipCode ?? (job.county ? countyLabels[job.county] : '—')}
+                </span>
                 <span className={`w-16 text-center font-medium ${statusColor[job.status]}`}>
                   {statusIcon[job.status]} {job.status}
                 </span>

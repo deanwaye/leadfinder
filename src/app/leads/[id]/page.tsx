@@ -8,7 +8,7 @@ interface PageProps {
 
 export default async function LeadPage({ params }: PageProps) {
   const { id } = await params
-  const { data: lead, error } = await supabase.from('leads').select('*').eq('id', id).single()
+  const { data: lead, error } = await supabase.from('lf_leads').select('*').eq('id', id).single()
 
   if (error || !lead) notFound()
 

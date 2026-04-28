@@ -8,7 +8,7 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
   const { id } = await params
 
   const { data: lead, error: fetchError } = await supabase
-    .from('leads')
+    .from('lf_leads')
     .select('website')
     .eq('id', id)
     .single()
@@ -24,7 +24,7 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
   const result = await enrichWebsite(lead.website)
 
   const { data, error } = await supabase
-    .from('leads')
+    .from('lf_leads')
     .update({ ...result, enriched_at: new Date().toISOString() })
     .eq('id', id)
     .select()

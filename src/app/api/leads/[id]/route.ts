@@ -6,7 +6,7 @@ type Ctx = { params: Promise<{ id: string }> }
 
 export async function GET(_req: NextRequest, { params }: Ctx) {
   const { id } = await params
-  const { data, error } = await supabase.from('leads').select('*').eq('id', id).single()
+  const { data, error } = await supabase.from('lf_leads').select('*').eq('id', id).single()
   if (error) return Response.json({ error: error.message }, { status: 404 })
   return Response.json(data)
 }
@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (body.notes !== undefined) updates.notes = body.notes
 
   const { data, error } = await supabase
-    .from('leads')
+    .from('lf_leads')
     .update(updates)
     .eq('id', id)
     .select()

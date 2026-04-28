@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const perPage = 50
 
   let query = supabase
-    .from('leads')
+    .from('lf_leads')
     .select('*', { count: 'exact' })
     .order('name', { ascending: true })
     .range((page - 1) * perPage, page * perPage - 1)
